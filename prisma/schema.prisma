@@ -1,0 +1,457 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  username          String    @unique
+  name              String?
+  password          String?   // hashed password for email/password auth
+  image             String?
+  bio               String?
+  location          String?
+  website           String?
+  verified          Boolean   @default(false)
+  role              UserRole  @default(ARTIST)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  artist            Artist?
+  scout             Scout?
+  subscription      Subscription?
+  posts             Post[]
+  likes             Like[]
+  comments          Comment[]
+  replies           Reply[]
+  followers         Follow[] @relation("following")
+  following         Follow[] @relation("follower")
+  saves             Save[]
+  shortlists        Shortlist[]
+  notes             ScoutNote[]
+  sentMessages      Message[] @relation("sender")
+  receivedMessages  Message[] @relation("receiver")
+  notifications     Notification[]
+  submissions       Submission[]
+  reports           Report[]
+  adminActions      AdminAction[]
+  opportunities     Opportunity[] @relation("createdBy")
+  opportunityApps   OpportunityApplication[]
+}
+
+enum UserRole {
+  ARTIST
+  SCOUT
+  ADMIN
+}
+
+// Artist Profile
+model Artist {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stageName       String   @unique
+  genres          String[] // array of genres
+  bio             String?
+  profileImage    String?
+  coverImage      String?
+  location        String?
+  country         String?
+  spotifyUrl      String?
+  appleUrl        String?
+  youtubeUrl      String?
+  instagramUrl    String?
+  twitterUrl      String?
+  tiktokUrl       String?
+  contactEmail    String?
+  bookingInfo     String?
+  totalLikes      Int      @default(0)
+  totalViews      Int      @default(0)
+  followerCount   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  posts           Post[]
+  stats           ArtistStats?
+}
+
+// Scout Profile
+model Scout {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company         String?
+  role            String?
+  bio             String?
+  profileImage    String?
+  location        String?
+  expertise       String[] // array of expertise areas
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  shortlists      Shortlist[]
+}
+
+// Artist Statistics
+model ArtistStats {
+  id              String   @id @default(cuid())
+  artistId        String   @unique
+  artist          Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  totalPosts      Int      @default(0)
+  totalLikes      Int      @default(0)
+  totalViews      Int      @default(0)
+  totalComments   Int      @default(0)
+  totalShares     Int      @default(0)
+  totalSaves      Int      @default(0)
+  followerCount   Int      @default(0)
+  followingCount  Int      @default(0)
+  updatedAt       DateTime @updatedAt
+}
+
+// Posts (Videos/Content)
+model Post {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artistId        String
+  artist          Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  contentType     ContentType
+  videoUrl        String?
+  thumbnailUrl    String?
+  title           String?
+  caption         String?
+  hashtags        String[] // array of hashtags
+  genres          String[]
+  musicTrack      String?
+  musicArtist     String?
+  duration        Int?     // in seconds
+  viewCount       Int      @default(0)
+  isPublished     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  likes           Like[]
+  comments        Comment[]
+  shares          Share[]
+  saves           Save[]
+  reports         Report[] @relation("post")
+}
+
+enum ContentType {
+  VIDEO
+  MUSIC
+  PHOTO
+  PERFORMANCE
+  FREESTYLE
+  BEHIND_THE_SCENES
+}
+
+// Likes
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+// Comments
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  replies   Reply[]
+  reports   Report[] @relation("comment")
+}
+
+// Comment Replies
+model Reply {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Shares
+model Share {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  sharedBy  String   // anonymous share tracking
+  createdAt DateTime @default(now())
+}
+
+// Saves/Favourites
+model Save {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+// Follow System
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+// Scout Shortlists
+model Shortlist {
+  id          String   @id @default(cuid())
+  scoutId     String
+  scout       Scout    @relation(fields: [scoutId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  genre       String?
+  location    String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  artists     ShortlistArtist[]
+}
+
+// Shortlist Artists
+model ShortlistArtist {
+  id          String   @id @default(cuid())
+  shortlistId String
+  shortlist   Shortlist @relation(fields: [shortlistId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  addedAt     DateTime @default(now())
+
+  @@unique([shortlistId, userId])
+}
+
+// Scout Notes
+model ScoutNote {
+  id        String   @id @default(cuid())
+  scoutId   String
+  scout     User     @relation(fields: [scoutId], references: [id], onDelete: Cascade)
+  artistId  String
+  artist    User     @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  content   String
+  isPrivate Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Messaging
+model Message {
+  id        String   @id @default(cuid())
+  senderId  String
+  sender    User     @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver  User     @relation("receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// Notifications
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  relatedUserId String?
+  relatedPostId String?
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+enum NotificationType {
+  NEW_FOLLOWER
+  LIKE
+  COMMENT
+  REPLY
+  MESSAGE
+  SUBMISSION_UPDATE
+  OPPORTUNITY
+  FEATURE
+}
+
+// Submissions (Get Scouted)
+model Submission {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          SubmissionStatus @default(PENDING)
+  artistName      String
+  genre           String
+  location        String
+  bio             String
+  musicUrl        String?
+  videoUrl        String?
+  socialLinks     String[] // JSON array of social links
+  contactEmail    String
+  submittedAt     DateTime @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?  // admin user id
+}
+
+enum SubmissionStatus {
+  PENDING
+  REVIEWING
+  APPROVED
+  REJECTED
+}
+
+// Opportunities
+model Opportunity {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  type            OpportunityType
+  genre           String?
+  location        String?
+  deadline        DateTime?
+  createdBy       User     @relation("createdBy", fields: [createdById], references: [id])
+  createdById     String
+  imageUrl        String?
+  applicationUrl  String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  applications    OpportunityApplication[]
+}
+
+enum OpportunityType {
+  AUDITION
+  COLLABORATION
+  RECORD_LABEL
+  COMPETITION
+  EVENT
+  TALENT_SEARCH
+  MUSIC_VIDEO
+}
+
+// Opportunity Applications
+model OpportunityApplication {
+  id              String   @id @default(cuid())
+  opportunityId   String
+  opportunity     Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          ApplicationStatus @default(PENDING)
+  message         String?
+  submittedAt     DateTime @default(now())
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// Reports (Content Moderation)
+model Report {
+  id              String   @id @default(cuid())
+  reportedBy      String
+  reporter        User     @relation(fields: [reportedBy], references: [id], onDelete: Cascade)
+  reason          String
+  description     String?
+  postId          String?
+  post            Post?    @relation("post", fields: [postId], references: [id], onDelete: SetNull)
+  commentId       String?
+  comment         Comment? @relation("comment", fields: [commentId], references: [id], onDelete: SetNull)
+  status          ReportStatus @default(PENDING)
+  createdAt       DateTime @default(now())
+  resolvedAt      DateTime?
+  resolvedBy      String?  // admin user id
+  action          String?  // action taken
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+// Admin Actions
+model AdminAction {
+  id              String   @id @default(cuid())
+  adminId         String
+  admin           User     @relation(fields: [adminId], references: [id])
+  action          AdminActionType
+  targetUserId    String?
+  description     String?
+  createdAt       DateTime @default(now())
+}
+
+enum AdminActionType {
+  USER_SUSPEND
+  USER_UNSUSPEND
+  USER_DELETE
+  CONTENT_REMOVE
+  CONTENT_FEATURE
+  REPORT_RESOLVE
+}
+
+// Subscriptions
+model Subscription {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan            SubscriptionPlan
+  status          SubscriptionStatus @default(ACTIVE)
+  stripeCustomerId String?
+  stripeSubscriptionId String?
+  currentPeriodStart DateTime?
+  currentPeriodEnd DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum SubscriptionPlan {
+  FREE
+  ARTIST_PRO
+  SCOUT_PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PAST_DUE
+}
