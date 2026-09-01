@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import { prisma } from '@/lib/prisma';
+import { AUTH_COOKIE, createAuthToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,21 +15,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Verify credentials against database
-    // TODO: Generate JWT token
+    const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (!user?.password || !(await bcrypt.compare(password, user.password))) {
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    }
 
-    return NextResponse.json(
-      {
-        message: 'Login successful',
-        token: 'jwt_token_here',
-        user: {
-          id: 'user_id',
-          email,
-          role: 'ARTIST',
-        },
-      },
-      { status: 200 }
-    );
+    const token = createAuthToken({ userId: user.id, email: user.email, role: user.role });
+    const response = NextResponse.json({
+      message: 'Login successful',
+      token,
+      user: { id: user.id, email: user.email, role: user.role },
+    });
+    response.cookies.set(AUTH_COOKIE, token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

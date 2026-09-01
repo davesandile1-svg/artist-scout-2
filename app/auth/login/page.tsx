@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { signIn } from 'next-auth/react';
+import { FaGithub } from 'react-icons/fa';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,12 +15,18 @@ export default function LoginPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [githubLoading, setGithubLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const handleGitHubSignIn = async () => {
+    setGithubLoading(true);
+    await signIn('github', { callbackUrl: '/feed' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,6 +104,22 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <div className="my-5 flex items-center gap-3 text-gray-500 text-sm">
+            <span className="h-px flex-1 bg-gray-700" />
+            <span>or</span>
+            <span className="h-px flex-1 bg-gray-700" />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGitHubSignIn}
+            disabled={githubLoading}
+            className="w-full py-3 font-semibold border border-gray-700 rounded hover:border-yellow-500 transition-colors flex items-center justify-center gap-2"
+          >
+            <FaGithub aria-hidden="true" />
+            {githubLoading ? 'Connecting...' : 'Continue with GitHub'}
+          </button>
 
           <div className="mt-6 text-center text-gray-400">
             Don't have an account?{' '}

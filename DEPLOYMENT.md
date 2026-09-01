@@ -39,6 +39,8 @@ CLOUDINARY_API_SECRET=your_api_secret
 
 ## Deploy to Vercel
 
+This is a Next.js application with server-rendered routes, API routes, middleware, and Prisma. Deploy it to a Next.js-capable host such as Vercel. GitHub Pages is not supported for this project: it only serves static files and will render the repository README through Jekyll instead of running the application.
+
 ### Option 1: Using Vercel Dashboard
 
 1. Go to [vercel.com](https://vercel.com)
@@ -47,6 +49,8 @@ CLOUDINARY_API_SECRET=your_api_secret
 4. Import the `artist-scout-2` repository
 5. Add all environment variables
 6. Click "Deploy"
+
+The repository includes `vercel.json` so Vercel uses the Next.js framework, `npm ci`, and `npm run build` automatically.
 
 ### Option 2: Using Vercel CLI
 
@@ -63,6 +67,8 @@ vercel
 # For production
 vercel --prod
 ```
+
+After deployment, use the Vercel production URL as the application URL. Set `NEXTAUTH_URL` to that URL in the Vercel project environment variables, then redeploy.
 
 ## Database Setup
 
