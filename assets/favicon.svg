@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Artist Scouts favicon">
+  <rect width="64" height="64" rx="16" fill="#050505"/>
+  <path d="M16 16h32v32H16z" fill="#D4AF37" opacity="0.15"/>
+  <path d="M18 44V20h8.5c6.7 0 10.5 3.1 10.5 8.6 0 5.7-3.8 8.7-10.5 8.7H26v6.7H18zm8-12.3h2.8c2.8 0 4.3-1.2 4.3-3.7 0-2.3-1.5-3.4-4.3-3.4H26v7.1z" fill="#D4AF37"/>
+  <path d="M36 44V20h8.5c6.7 0 10.5 3.1 10.5 8.6 0 5.7-3.8 8.7-10.5 8.7H44v6.7H36zm8-12.3h2.8c2.8 0 4.3-1.2 4.3-3.7 0-2.3-1.5-3.4-4.3-3.4H44v7.1z" fill="#F5D679" opacity="0.9"/>
+</svg>
