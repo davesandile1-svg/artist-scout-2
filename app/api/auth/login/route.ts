@@ -15,7 +15,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    const user = await prisma.user.findUnique({ 
+      where: { email: email.trim().toLowerCase() },
+      include: {
+        artist: true,
+        scout: true,
+      }
+    });
+    
     if (!user?.password || !(await bcrypt.compare(password, user.password))) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
@@ -24,7 +31,15 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       message: 'Login successful',
       token,
-      user: { id: user.id, email: user.email, role: user.role },
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        isArtist: !!user.artist,
+        isScout: !!user.scout,
+      },
     });
     response.cookies.set(AUTH_COOKIE, token, {
       httpOnly: true,

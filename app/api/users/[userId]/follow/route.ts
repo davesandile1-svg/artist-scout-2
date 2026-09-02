@@ -1,17 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { verifyAuthToken } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
   try {
-    const userId = params.userId;
-    // TODO: Get current user from session
-    // TODO: Create follow record in database
-    // TODO: Create notification for followed user
+    const token = request.cookies.get('artist_scout_token')?.value ||
+                  request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+    
+    const payload = token ? verifyAuthToken(token) : null;
+    if (!payload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const followingId = params.userId;
+    const followerId = payload.userId;
+
+    // Can't follow yourself
+    if (followerId === followingId) {
+      return NextResponse.json({ error: 'Cannot follow yourself' }, { status: 400 });
+    }
+
+    // Check if user exists
+    const userExists = await prisma.user.findUnique({ where: { id: followingId } });
+    if (!userExists) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Check if already following
+    const existingFollow = await prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId, followingId } },
+    });
+
+    if (existingFollow) {
+      return NextResponse.json({ error: 'Already following' }, { status: 409 });
+    }
+
+    // Create follow
+    await prisma.follow.create({
+      data: { followerId, followingId },
+    });
+
+    // Create notification for followed user
+    await prisma.notification.create({
+      data: {
+        userId: followingId,
+        type: 'NEW_FOLLOWER',
+        relatedUserId: followerId,
+        message: `Someone started following you`,
+      },
+    });
+
+    // Get follow count
+    const followerCount = await prisma.follow.count({
+      where: { followingId },
+    });
 
     return NextResponse.json(
-      { message: 'User followed' },
+      { message: 'User followed', followerCount },
       { status: 201 }
     );
   } catch (error) {
@@ -28,12 +76,33 @@ export async function DELETE(
   { params }: { params: { userId: string } }
 ) {
   try {
-    const userId = params.userId;
-    // TODO: Get current user from session
-    // TODO: Delete follow record from database
+    const token = request.cookies.get('artist_scout_token')?.value ||
+                  request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+    
+    const payload = token ? verifyAuthToken(token) : null;
+    if (!payload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const followingId = params.userId;
+    const followerId = payload.userId;
+
+    // Delete follow
+    const deletedFollow = await prisma.follow.delete({
+      where: { followerId_followingId: { followerId, followingId } },
+    }).catch(() => null);
+
+    if (!deletedFollow) {
+      return NextResponse.json({ error: 'Not following this user' }, { status: 404 });
+    }
+
+    // Get updated follow count
+    const followerCount = await prisma.follow.count({
+      where: { followingId },
+    });
 
     return NextResponse.json(
-      { message: 'User unfollowed' },
+      { message: 'User unfollowed', followerCount },
       { status: 200 }
     );
   } catch (error) {
